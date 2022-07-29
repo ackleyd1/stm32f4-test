@@ -43,8 +43,8 @@ SECTIONS
   } >FLASH
 
   /* used by the startup to initialize data */
-  _sidata = .;
-  .data : AT(_sidata)
+  _sidata = LOADADDR(.data);
+  .data :
   {
     . = ALIGN(4);
     _sdata = .;        /* create a global symbol at data start */
@@ -52,15 +52,15 @@ SECTIONS
     *(.data*)          /* .data* sections */
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >FLASH
+  } >RAM AT> FLASH
 
   
   /* Uninitialized data section */
   . = ALIGN(4);
   .bss :
   {
-    /* This is used by the startup in order to initialize the .bss secion */
-    _sbss = .;         /* define a global symbol at bss start */
+    /* This is used by the startup in order to initialize the .bss section */
+    _sbss = .;
     __bss_start__ = _sbss;
     *(.bss)
     *(.bss*)

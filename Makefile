@@ -4,7 +4,7 @@ CC=arm-none-eabi-gcc
 CFLAGS= -Wall
 
 
-OBJS=ivt.o startup.o main.o system_stm32f4xx.o
+OBJS=startup.o main.o system_stm32f4xx.o
 AS=arm-none-eabi-as
 LD=arm-none-eabi-ld
 ASFLAGS=
@@ -12,6 +12,7 @@ LDFLAGS=
 LDLIBS=
 
 vpath %.c src
+vpath %.s src
 
 .PHONY: all
 all: $(PROJ).bin
@@ -23,7 +24,7 @@ all: $(PROJ).bin
 	$(CC) -c -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -I./inc -o $@ $<
 
 $(PROJ).elf: $(OBJS)
-	$(CC) $^ $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -T linker.ld -Wl,-Map test.map -o $@
+	$(CC) $^ $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -T ld/linker.ld -Wl,-Map test.map -o $@
 
 $(PROJ).bin: $(PROJ).elf
 	arm-none-eabi-objcopy -S -O binary $< $@
