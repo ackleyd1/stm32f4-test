@@ -7,8 +7,9 @@
 
 .type  reset_handler, %function
 reset_handler: 
-  ldr   sp, =_estack       /* set stack pointer */
- 
+  ldr r0, =_estack       /* set stack pointer */
+  mov sp, r0
+
 /* Copy the data segment initializers from flash to SRAM */  
   ldr r0, =_sdata
   ldr r1, =_edata
