@@ -42,5 +42,6 @@ zero_bss_loop:
   bcc zero_bss
 
 // branch to the main method
+  bl SystemInit
   b  main    
 .size  reset_handler, .-reset_handler

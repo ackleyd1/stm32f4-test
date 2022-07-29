@@ -4,7 +4,7 @@ CC=arm-none-eabi-gcc
 CFLAGS= -Wall
 
 
-OBJS=ivt.o startup.o main.o
+OBJS=ivt.o startup.o main.o system_stm32f4xx.o
 AS=arm-none-eabi-as
 LD=arm-none-eabi-ld
 ASFLAGS=

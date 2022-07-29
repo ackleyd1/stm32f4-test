@@ -20,7 +20,7 @@ SECTIONS
   .isr_vector :
   {
     . = ALIGN(4);
-    KEEP(*(.isr_vector)) /* Startup code */
+    *(.isr_vector)
     . = ALIGN(4);
   } >FLASH
 
@@ -52,7 +52,7 @@ SECTIONS
     *(.data*)          /* .data* sections */
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >RAM
+  } >FLASH
 
   
   /* Uninitialized data section */
