@@ -2,6 +2,7 @@
 minimal configuration for stm32f429 development
 
 ## directory layout
+```
 ├── build           build artifacts (not in vc)
 ├── doc             relevant documentation
 │   └── man
@@ -14,3 +15,4 @@ minimal configuration for stm32f429 development
 ├── inc
 ├── ld
 └── src
+```
