@@ -1,5 +1,8 @@
+export PATH := /usr/local/gcc-arm-none-eabi/bin:$(PATH)
+export LD_LIBRARY_PATH := /usr/local/gcc-arm-none-eabi/lib:$(LD_LIBRARY_PATH)
+
 PROJ=test
-TARGET_ARCH=-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb # specs might set these
+TARGET_ARCH=-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb
 CC=arm-none-eabi-gcc
 CFLAGS= -Wall
 
@@ -12,28 +15,37 @@ LDFLAGS=
 LDLIBS=
 
 vpath %.c src
-vpath %.s src
+vpath %.c ext/st/src
+vpath %.s ext/st/src
 
 .PHONY: all
-all: $(PROJ).bin
+all: build/$(PROJ).bin
 
-%.o: %.s
-	$(CC) -x assembler-with-cpp -c -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -o $@ $<
+build/%.o: %.s
+ifeq ("$(wildcard build)", "")
+	@echo "creating build directory"
+	@mkdir build
+endif
+	$(CC) -c -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -o $@ $<
 
-%.o: %.c
-	$(CC) -c -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -I./inc -o $@ $<
+build/%.o: %.c
+	$(CC) -c -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -I./inc -I./ext/st/inc -I./ext/cmsis/inc -o $@ $<
 
-$(PROJ).elf: $(OBJS)
+build/$(PROJ).elf: $(addprefix build/,$(OBJS))
 	$(CC) $^ $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -T ld/linker.ld -Wl,-Map test.map -o $@
 
-$(PROJ).bin: $(PROJ).elf
+build/$(PROJ).bin: build/$(PROJ).elf
 	arm-none-eabi-objcopy -S -O binary $< $@
 
 .PHONY: flash
-flash: $(PROJ).bin
-	st-flash write $(PROJ).bin 0x8000000
+flash: build/$(PROJ).bin
+	st-flash write $< 0x8000000
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS)
-	rm -f $(PROJ).elf
+ifeq ("$(wildcard build)", "")
+	@echo "no build to clean"
+endif
+	rm -f $(addprefix build/,$(OBJS))
+	rm -f build/$(PROJ).elf
+	rm -f build/$(PROJ).bin

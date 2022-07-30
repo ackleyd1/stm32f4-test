@@ -6,3 +6,4 @@
 *.dat
 *.md
 *.pdf
+build*
