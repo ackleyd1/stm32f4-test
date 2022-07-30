@@ -32,7 +32,7 @@ build/%.o: %.c
 	$(CC) -c -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -I./inc -I./ext/st/inc -I./ext/cmsis/inc -o $@ $<
 
 build/$(PROJ).elf: $(addprefix build/,$(OBJS))
-	$(CC) $^ $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -T ld/linker.ld -Wl,-Map test.map -o $@
+	$(CC) $^ $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -T ld/linker.ld -Wl,-Map build/test.map -o $@
 
 build/$(PROJ).bin: build/$(PROJ).elf
 	arm-none-eabi-objcopy -S -O binary $< $@
