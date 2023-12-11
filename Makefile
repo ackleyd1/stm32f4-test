@@ -26,13 +26,13 @@ ifeq ("$(wildcard build)", "")
 	@echo "creating build directory"
 	@mkdir build
 endif
-	$(CC) -c -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -o $@ $<
+	$(CC) -c -g3 -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -o $@ $<
 
 build/%.o: %.c
-	$(CC) -c -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -I./inc -I./ext/st/inc -I./ext/cmsis/inc -o $@ $<
+	$(CC) -c -g3 -O0 -Wall $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -I./inc -I./ext/st/inc -I./ext/cmsis/inc -o $@ $<
 
 build/$(PROJ).elf: $(addprefix build/,$(OBJS))
-	$(CC) $^ $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -T ld/linker.ld -Wl,-Map build/test.map -o $@
+	$(CC) -g3 $^ $(TARGET_ARCH) --specs=nosys.specs -nostdlib -lgcc -T ld/linker.ld -Wl,-Map build/test.map -o $@
 
 build/$(PROJ).bin: build/$(PROJ).elf
 	arm-none-eabi-objcopy -S -O binary $< $@
