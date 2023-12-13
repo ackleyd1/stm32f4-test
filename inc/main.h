@@ -8,4 +8,6 @@
 #define LD2  (7)
 #define LD3  (14)
 
+void delay(uint32_t);
+
 #endif
