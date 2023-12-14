@@ -7,8 +7,7 @@ volatile uint32_t tick;
 volatile unsigned char led_on;
 
 int main(void) {
-    tick = 0;
-    SysTick_Config(2000);
+    systick_init(8000);
     // enable the GPIOB peripheral in 'RCC_AHB1ENR'.
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
 
@@ -19,6 +18,8 @@ int main(void) {
     // same thing for LED2
     GPIOB->MODER |= (0x1U << 14);
     GPIOB->ODR |= (0x1U << 7);
+
+    delay_ms(1000);
 
     // enable GPIOC peripheral
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
@@ -64,17 +65,17 @@ int main(void) {
 
     // enable SPI interface on APB2
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
-    SPI1->CR1 = (SPI_CR1_DFF | SPI_CR1_SSM | SPI_CR1_SSI | SPI_CR1_MSTR | SPI_CR1_CPOL | SPI_CR1_CPHA);
+    SPI1->CR1 = (SPI_CR1_DFF | SPI_CR1_SSM | SPI_CR1_SSI | SPI_CR1_BR_1 | SPI_CR1_BR_0 | SPI_CR1_MSTR | SPI_CR1_CPOL | SPI_CR1_CPHA);
     SPI1->CR2 |= SPI_CR2_SSOE;
 
     // set reset pin low
     GPIOB->ODR &= ~(0x1 << 8);
     // wait 100us
-    delay(1);
+    delay_ms(100);
     // set reset pin high
     GPIOB->ODR |= (0x1 << 8);
     // wait 100us
-    delay(1);
+    delay_ms(100);
     
     SPI1->CR1 |= SPI_CR1_SPE;
     // dummy read
@@ -132,11 +133,17 @@ void EXTI15_10_IRQHandler(void) {
     }
 }
 
-void SysTick_Handler(void) {
-    tick++;	
+void systick_init(uint32_t reload) {
+	SysTick->LOAD = (uint32_t)(reload - 1UL);
+	SysTick->VAL = 0;
+	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk;
 }
 
-void delay(uint32_t d) {
-    volatile uint32_t start = tick;
-    while((tick - start) < d) {}
+void delay_ms(uint32_t t) {
+    __IO uint32_t tmp = SysTick->CTRL;
+    ((void)tmp);
+
+    while(t) {
+        if((SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0U) t--;    
+    }
 }

@@ -4,10 +4,7 @@
 #include <stdint.h>
 #include "stm32f4xx.h"
 
-
-#define LD2  (7)
-#define LD3  (14)
-
-void delay(uint32_t);
+void systick_init(uint32_t);
+void delay_ms(uint32_t);
 
 #endif
