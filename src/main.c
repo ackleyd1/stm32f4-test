@@ -9,31 +9,19 @@ volatile unsigned char led_on;
 int main(void) {
     tick = 0;
     SysTick_Config(2000);
-    // Enable the GPIOB peripheral in 'RCC_AHB1ENR'.
+    // enable the GPIOB peripheral in 'RCC_AHB1ENR'.
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
 
-    // reset LD1 pin functions
-    GPIOB->MODER &= ~0x3U;
-    GPIOB->PUPDR &= ~0x3;
-    GPIOB->OSPEEDR &= ~0x3;
-    GPIOB->OTYPER &= ~0x1;
-
-    // set LD1 activation to pull up
+    // enable LED1
     GPIOB->MODER |= 0x1U;
-
-    // set the pin to on
     GPIOB->ODR |= 0x1U;
+
+    // same thing for LED2
+    GPIOB->MODER |= (0x1U << 14);
+    GPIOB->ODR |= (0x1U << 7);
 
     // enable GPIOC peripheral
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
-
-    // same thing for LD2
-    GPIOB->MODER &= ~(0x3U << 14);
-    GPIOB->PUPDR &= ~(0x3U << 14);
-    GPIOB->OSPEEDR &= ~(0x3U << 14);
-    GPIOB->OTYPER &= ~(0x1U << 7);
-    GPIOB->MODER |= (0x1U << 14);
-    GPIOB->ODR |= (0x1U << 7);
 
     // configure button
     GPIOC->MODER &= ~(0x3U << 26);
@@ -55,12 +43,9 @@ int main(void) {
     NVIC_EnableIRQ(EXTI15_10_IRQn);
 
     // set GPIOB for RST pin
-    GPIOB->MODER &= ~(0x3U << 16);
-    GPIOB->PUPDR &= ~(0x3U << 16);
-    GPIOB->OSPEEDR &= ~(0x3U << 16);
-    GPIOB->OTYPER &= ~(0x1U << 8);
     GPIOB->MODER |= (0x1U << 16);
 
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
     // set SPI GPIOA pins to alternate mode
     GPIOA->MODER |= (0x2 << 8);
     GPIOA->PUPDR |= (0x2 << 8);
@@ -77,55 +62,46 @@ int main(void) {
     // select SPI in AFRL
     GPIOA->AFR[0] = 0x55550000;
 
-    //NVIC_SetPriority(SPI1_IRQn, 0x03);
-    //NVIC_EnableIRQ(SPI1_IRQn);
-
     // enable SPI interface on APB2
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+    SPI1->CR1 = (SPI_CR1_DFF | SPI_CR1_SSM | SPI_CR1_SSI | SPI_CR1_MSTR | SPI_CR1_CPOL | SPI_CR1_CPHA);
+    SPI1->CR2 |= SPI_CR2_SSOE;
 
-    // select SPI baud rate
-    // set CPOL and CPHA
-    SPI1->CR1 |= 0x7;
-    // set 16bit format
-    SPI1->CR1 |= (0x1 << 11);
-    // configure LSB or MSB first
-    // setup SSM pin
-    SPI1->CR1 |= (0x1 << 9);
-    // set SPE
-    SPI1->CR1 |= (0x1 << 6);
-
-    // set chip select
-    SPI1->CR1 |= (0x1 << 8);
-
-    // set pin low
-    GPIOB->ODR |= (0x0 << 8);
+    // set reset pin low
+    GPIOB->ODR &= ~(0x1 << 8);
     // wait 100us
-    delay(100);
-    // set high
+    delay(1);
+    // set reset pin high
     GPIOB->ODR |= (0x1 << 8);
     // wait 100us
-    delay(100);
+    delay(1);
+    
+    SPI1->CR1 |= SPI_CR1_SPE;
     // dummy read
-    // write command
     uint16_t cmd_write = (RA8875_CMDWRITE << 8);
     uint16_t data_read = (RA8875_DATAREAD << 8);
 
     SPI1->CR1 &= ~(0x1 << 8);
+    while(!(SPI1->SR & SPI_SR_TXE)){}
     SPI1->DR = cmd_write;
     while(!(SPI1->SR & SPI_SR_TXE)){}
+    while(!(SPI1->SR & SPI_SR_RXNE)){}
+    uint16_t data = SPI1->DR;
     SPI1->CR1 |= (0x1 << 8);
 
     SPI1->CR1 &= ~(0x1 << 8);
     SPI1->DR = data_read;
     while(!(SPI1->SR & SPI_SR_TXE)){}
     while(!(SPI1->SR & SPI_SR_RXNE)){}
-    uint16_t data = SPI1->DR;
+    data = SPI1->DR;
     SPI1->CR1 |= (0x1 << 8);
 
     // real read
     SPI1->CR1 &= ~(0x1 << 8);
     SPI1->DR = cmd_write;
     while(!(SPI1->SR & SPI_SR_TXE)){}
+    while(!(SPI1->SR & SPI_SR_RXNE)){}
+    data = SPI1->DR;
     SPI1->CR1 |= (0x1 << 8);
 
     SPI1->CR1 &= ~(0x1 << 8);
