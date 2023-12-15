@@ -1,7 +1,5 @@
 #include "main.h"
-
-#define RA8875_DATAREAD 0x40  ///< See datasheet
-#define RA8875_CMDWRITE 0x80  ///< See datasheet
+#include "ra8875.h"
 
 volatile unsigned char led_on;
 
@@ -81,9 +79,20 @@ int main(void) {
     uint16_t cmd_write = (RA8875_CMDWRITE << 8);
     uint16_t data_read = (RA8875_DATAREAD << 8);
 
-    spi_write(SPI1, cmd_write);
-    uint16_t id = spi_write(SPI1, data_read); 
+    spi_write_blocking(SPI1, cmd_write);
+    uint16_t id = spi_write_blocking(SPI1, data_read); 
     
+    ra8875_init();
+
+    set_mode(RA8875_txt_mode);
+    blink_cursor(32);
+
+    set_cursor(10, 10);
+    char string[14] = "Hello, World!";
+    set_text_color(RA8875_RED, RA8875_GREEN);
+    set_text_transparency(0);
+    write_text(string, 13);
+
     // set LD1 on
     led_on = 0x0;
     while (1) {
@@ -120,7 +129,7 @@ void delay_ms(uint32_t t) {
     }
 }
 
-uint16_t spi_write(SPI_TypeDef *spi, uint16_t tx_data) {
+uint16_t spi_write_blocking(SPI_TypeDef *spi, uint16_t tx_data) {
     GPIOA->ODR &= ~(0x1 << 4);
     while(!(spi->SR & SPI_SR_TXE)){}
     spi->DR = tx_data;
