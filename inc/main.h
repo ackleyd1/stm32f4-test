@@ -6,5 +6,6 @@
 
 void systick_init(uint32_t);
 void delay_ms(uint32_t);
+uint16_t spi_write(SPI_TypeDef, uint16_t);
 
 #endif

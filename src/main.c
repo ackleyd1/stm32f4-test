@@ -3,13 +3,15 @@
 #define RA8875_DATAREAD 0x40  ///< See datasheet
 #define RA8875_CMDWRITE 0x80  ///< See datasheet
 
-volatile uint32_t tick;
 volatile unsigned char led_on;
 
 int main(void) {
     systick_init(8000);
-    // enable the GPIOB peripheral in 'RCC_AHB1ENR'.
+    // enable peripherals
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 
     // enable LED1
     GPIOB->MODER |= 0x1U;
@@ -21,15 +23,11 @@ int main(void) {
 
     delay_ms(1000);
 
-    // enable GPIOC peripheral
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
-
-    // configure button
+    // configure USER button
     GPIOC->MODER &= ~(0x3U << 26);
     GPIOC->PUPDR &= ~(0x3U << 26);
     
-    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
-
+    // setup EXTI
     SYSCFG->EXTICR[3] &= ~(SYSCFG_EXTICR4_EXTI13_Msk);
     SYSCFG->EXTICR[3] |=  (SYSCFG_EXTICR4_EXTI13_PC);
 
@@ -46,12 +44,12 @@ int main(void) {
     // set GPIOB for RST pin
     GPIOB->MODER |= (0x1U << 16);
 
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-    // set SPI GPIOA pins to alternate mode
+    // set PA4 for CSN
     GPIOA->MODER |= (0x1 << 8);
     GPIOA->PUPDR |= (0x1 << 8);
     GPIOA->ODR |= (0x1 << 4);
 
+    // set SPI GPIOA pins to alternate mode
     GPIOA->MODER |= (0x2 << 10);
     GPIOA->PUPDR |= (0x2 << 10);
 
@@ -83,21 +81,8 @@ int main(void) {
     uint16_t cmd_write = (RA8875_CMDWRITE << 8);
     uint16_t data_read = (RA8875_DATAREAD << 8);
 
-    GPIOA->ODR &= ~(0x1 << 4);
-    while(!(SPI1->SR & SPI_SR_TXE)){}
-    SPI1->DR = cmd_write;
-    while(!(SPI1->SR & SPI_SR_TXE)){}
-    while(!(SPI1->SR & SPI_SR_RXNE)){}
-    uint16_t data = SPI1->DR;
-    GPIOA->ODR |= (0x1 << 4);
-
-    GPIOA->ODR &= ~(0x1 << 4);
-    SPI1->DR = data_read;
-    while(!(SPI1->SR & SPI_SR_TXE)){}
-    while(!(SPI1->SR & SPI_SR_RXNE)){}
-    data = SPI1->DR;
-    GPIOA->ODR |= (0x1 << 4);
-
+    spi_write(SPI1, cmd_write);
+    uint16_t id = spi_write(SPI1, data_read); 
     
     // set LD1 on
     led_on = 0x0;
@@ -133,4 +118,17 @@ void delay_ms(uint32_t t) {
     while(t) {
         if((SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0U) t--;    
     }
+}
+
+uint16_t spi_write(SPI_TypeDef spi, uint16_t tx_data) {
+    GPIOA->ODR &= ~(0x1 << 4);
+    while(!(spi->SR & SPI_SR_TXE)){}
+    spi->DR = tx_data;
+    while(!(spi->SR & SPI_SR_TXE)){}
+    while(!(spi->SR & SPI_SR_RXNE)){}
+    uint16_t rx_data = spi->DR;
+    GPIOA->ODR |= (0x1 << 4);
+    return rx_data;
+}
+
 }
