@@ -120,7 +120,7 @@ void delay_ms(uint32_t t) {
     }
 }
 
-uint16_t spi_write(SPI_TypeDef spi, uint16_t tx_data) {
+uint16_t spi_write(SPI_TypeDef *spi, uint16_t tx_data) {
     GPIOA->ODR &= ~(0x1 << 4);
     while(!(spi->SR & SPI_SR_TXE)){}
     spi->DR = tx_data;
@@ -129,6 +129,4 @@ uint16_t spi_write(SPI_TypeDef spi, uint16_t tx_data) {
     uint16_t rx_data = spi->DR;
     GPIOA->ODR |= (0x1 << 4);
     return rx_data;
-}
-
 }
