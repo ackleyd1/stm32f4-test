@@ -5,39 +5,18 @@ volatile unsigned char led_on;
 int main(void) {
     // Enable the GPIOB peripheral in 'RCC_AHB1ENR'.
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOFEN;
+    RCC->APB1ENR |= RCC_APB1ENR_I2C2EN;
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 
-    // reset LD1 pin functions
-    GPIOB->MODER &= ~0x3U;
-    GPIOB->PUPDR &= ~0x3;
-    GPIOB->OSPEEDR &= ~0x3;
-    GPIOB->OTYPER &= ~0x1;
-
-    // set LD1 activation to pull up
+    // turn LED1 on
     GPIOB->MODER |= 0x1U;
-
-    // set the pin to on
     GPIOB->ODR |= 0x1U;
 
-    // enable GPIOC peripheral
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
-
-    // same thing for LD2
-    GPIOB->MODER &= ~(0x3U << 14);
-    GPIOB->PUPDR &= ~(0x3U << 14);
-    GPIOB->OSPEEDR &= ~(0x3U << 14);
-    GPIOB->OTYPER &= ~(0x1U << 7);
+    // turn LED2 on
     GPIOB->MODER |= (0x1U << 14);
     GPIOB->ODR |= (0x1U << 7);
-
-    // configure button
-    GPIOC->MODER &= ~(0x3U << 26);
-    GPIOC->PUPDR &= ~(0x3U << 26);
-    
-    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
-
-    GPIOC->MODER &= ~(0x3U << 13);
-    GPIOC->PUPDR &= ~(0x3 << 13);
 
     SYSCFG->EXTICR[3] &= ~(SYSCFG_EXTICR4_EXTI13_Msk);
     SYSCFG->EXTICR[3] |=  (SYSCFG_EXTICR4_EXTI13_PC);
@@ -52,8 +31,27 @@ int main(void) {
     NVIC_SetPriority(EXTI15_10_IRQn, 0x03);
     NVIC_EnableIRQ(EXTI15_10_IRQn);
 
+    // set GPIOs as AF in open-drain
+    GPIOF->MODER |= 0x2;
+    GPIOF->MODER |= (0x2 << 2);
+    GPIOF->OTYPER |= 0x2;
+
+    // select AF to use
+    GPIOF->AFR[0] = 0x44;
+
+    // set input clock
+    I2C2->CR2 |= 0x2;
+    // config clock rate
+    I2C2->CCR |= 0xa;
+    // config rise time
+    I2C2->TRISE |= 0x3;
+    // enable i2c interface
+    I2C2->CR1 |= 0x1;
+    // generate start
+    I2C2->CR1 |= (0x1 << 8);
+
     // set LD1 on
-    led_on = 0x0;
+    led_on = 0;
     while (1) {
         if (led_on) {
             GPIOB->ODR |= 0x1U;
