@@ -7,7 +7,7 @@ CC=arm-none-eabi-gcc
 CFLAGS= -Wall
 
 
-OBJS=startup.o main.o system_stm32f4xx.o
+OBJS=startup.o main.o ssd1306.o system_stm32f4xx.o
 AS=arm-none-eabi-as
 LD=arm-none-eabi-ld
 ASFLAGS=

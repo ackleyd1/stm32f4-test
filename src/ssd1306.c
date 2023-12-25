@@ -1,7 +1,5 @@
 #include "ssd1306.h"
 
-
-
 void calc_render_area_buflen(struct render_area *area) {
     // calculate how long the flattened buffer will be for a render area
     area->buflen = (area->end_col - area->start_col + 1) * (area->end_page - area->start_page + 1);
@@ -12,7 +10,7 @@ void SSD1306_send_cmd(uint8_t cmd) {
     // this "data" can be a command or data to follow up a command
     // Co = 1, D/C = 0 => the driver expects a command
     uint8_t buf[2] = {0x80, cmd};
-    i2c_write_blocking(i2c_default, (SSD1306_I2C_ADDR & SSD1306_WRITE_MODE), buf, 2, false);
+    i2c_write_blocking((SSD1306_I2C_ADDR & SSD1306_WRITE_MODE), buf, 2);
 }
 
 void SSD1306_send_cmd_list(uint8_t *buf, int num) {
@@ -28,14 +26,9 @@ void SSD1306_send_buf(uint8_t buf[], int buflen) {
     // copy our frame buffer into a new buffer because we need to add the control byte
     // to the beginning
 
-    uint8_t *temp_buf = malloc(buflen + 1);
-
-    temp_buf[0] = 0x40;
-    memcpy(temp_buf+1, buf, buflen);
-
-    i2c_write_blocking(i2c_default, (SSD1306_I2C_ADDR & SSD1306_WRITE_MODE), temp_buf, buflen + 1, false);
-
-    free(temp_buf);
+    uint8_t ctrl = 0x40;
+    i2c_write_blocking((SSD1306_I2C_ADDR & SSD1306_WRITE_MODE), &ctrl, 1);
+    i2c_write_blocking((SSD1306_I2C_ADDR & SSD1306_WRITE_MODE), buf, buflen);
 }
 
 void SSD1306_init() {
@@ -84,7 +77,7 @@ void SSD1306_init() {
         SSD1306_SET_DISP | 0x01, // turn display on
     };
 
-    SSD1306_send_cmd_list(cmds, count_of(cmds));
+    SSD1306_send_cmd_list(cmds, sizeof(cmds));
 }
 
 void SSD1306_scroll(bool on) {
@@ -100,7 +93,7 @@ void SSD1306_scroll(bool on) {
         SSD1306_SET_SCROLL | (on ? 0x01 : 0) // Start/stop scrolling
     };
 
-    SSD1306_send_cmd_list(cmds, count_of(cmds));
+    SSD1306_send_cmd_list(cmds, sizeof(cmds));
 }
 
 void render(uint8_t *buf, struct render_area *area) {
@@ -114,13 +107,11 @@ void render(uint8_t *buf, struct render_area *area) {
         area->end_page
     };
     
-    SSD1306_send_cmd_list(cmds, count_of(cmds));
+    SSD1306_send_cmd_list(cmds, sizeof(cmds));
     SSD1306_send_buf(buf, area->buflen);
 }
 
 static void SetPixel(uint8_t *buf, int x,int y, bool on) {
-    assert(x >= 0 && x < SSD1306_WIDTH && y >=0 && y < SSD1306_HEIGHT);
-
     // The calculation to determine the correct bit to set depends on which address
     // mode we are in. This code assumes horizontal
 
@@ -147,9 +138,11 @@ static void SetPixel(uint8_t *buf, int x,int y, bool on) {
 // Basic Bresenhams.
 void DrawLine(uint8_t *buf, int x0, int y0, int x1, int y1, bool on) {
 
-    int dx =  abs(x1-x0);
+    int dx =  x1-x0;
+    if(dx < 0) dx = 0 - dx;
     int sx = x0<x1 ? 1 : -1;
-    int dy = -abs(y1-y0);
+    int dy = y1-y0;
+    if(dy > 0) dy = 0 - dy;
     int sy = y0<y1 ? 1 : -1;
     int err = dx+dy;
     int e2;
@@ -206,7 +199,6 @@ static void WriteChar(uint8_t *buf, int16_t x, int16_t y, uint8_t ch) {
     // For the moment, only write on Y row boundaries (every 8 vertical pixels)
     y = y/8;
 
-    ch = toupper(ch);
     int idx = GetFontIndex(ch);
     int fb_idx = y * 128 + x;
 

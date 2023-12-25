@@ -3,7 +3,8 @@
 volatile unsigned char led_on;
 
 int main(void) {
-    // Enable the GPIOB peripheral in 'RCC_AHB1ENR'.
+    systick_init(8000);
+    // enable peripherals
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOFEN;
@@ -34,7 +35,11 @@ int main(void) {
     // set GPIOs as AF in open-drain
     GPIOF->MODER |= 0x2;
     GPIOF->MODER |= (0x2 << 2);
-    GPIOF->OTYPER |= 0x2;
+    GPIOF->OTYPER |= 0x3;
+    GPIOF->PUPDR |= 0x1;
+    GPIOF->PUPDR |= (0x1 << 2);
+    GPIOF->OSPEEDR |= 0x2;
+    GPIOF->OSPEEDR |= (0x2 << 2);
 
     // select AF to use
     GPIOF->AFR[0] = 0x44;
@@ -47,8 +52,33 @@ int main(void) {
     I2C2->TRISE |= 0x3;
     // enable i2c interface
     I2C2->CR1 |= 0x1;
-    // generate start
-    I2C2->CR1 |= (0x1 << 8);
+
+    SSD1306_init();
+
+     // Initialize render area for entire frame (SSD1306_WIDTH pixels by SSD1306_NUM_PAGES pages)
+    struct render_area frame_area = {
+        start_col: 0,
+        end_col : SSD1306_WIDTH - 1,
+        start_page : 0,
+        end_page : SSD1306_NUM_PAGES - 1
+        };
+
+    calc_render_area_buflen(&frame_area);
+
+    // zero the entire display
+    uint8_t buf[SSD1306_BUF_LEN];
+    for (int i = 0; i < SSD1306_BUF_LEN; i++) {
+        buf[i] = '\0';
+    }
+    render(buf, &frame_area);
+
+    // intro sequence: flash the screen 3 times
+    for (int i = 0; i < 3; i++) {
+        SSD1306_send_cmd(SSD1306_SET_ALL_ON);    // Set all pixels on
+        delay_ms(500);
+        SSD1306_send_cmd(SSD1306_SET_ENTIRE_ON); // go back to following RAM for pixel state
+        delay_ms(500);
+    }
 
     // set LD1 on
     led_on = 0;
@@ -69,4 +99,41 @@ void EXTI15_10_IRQHandler(void) {
     // Toggle the global 'led on?' variable.
     led_on = !led_on;
     }
+}
+
+void systick_init(uint32_t reload) {
+	SysTick->LOAD = (uint32_t)(reload - 1UL);
+	SysTick->VAL = 0;
+	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk;
+}
+
+void delay_ms(uint32_t t) {
+    __IO uint32_t tmp = SysTick->CTRL;
+    ((void)tmp);
+
+    while(t) {
+        if((SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0U) t--;    
+    }
+}
+
+void i2c_write_blocking(uint8_t addr, uint8_t *buf, uint32_t buflen) {
+    // prepare for acknowledgement
+    I2C2->CR1 |= (0x1 << 10);
+    // generate start
+    I2C2->CR1 |= (0x1 << 8);
+    // wait for SB set
+    while(!(I2C2->SR1 & I2C_SR1_SB)) {}
+    // write slave address
+    *((__IO uint8_t *)&I2C2->DR) = addr;
+    // wait for addr ack set and read SR2
+    while(!(I2C2->SR1 & I2C_SR1_ADDR)) {}
+    while(!(I2C2->SR2 & I2C_SR2_MSL)) {}
+    // write first byte, wait for TxE and continue
+    for (int i = 0; i < buflen; i++) {
+       I2C2->DR = buf[i];
+       while(!(I2C2->SR1 & I2C_SR1_TXE)) {}
+    }
+    // set stop bit
+    I2C2->CR1 |= (0x1 << 9);
+
 }
